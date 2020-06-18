@@ -13,7 +13,7 @@ both.
 This requires Python 3 to run.
 
 repo: https://github.com/willkg/socorro-release/
-sha: bcd63d951db2bf9e383f9faaf6fd4bbfe615da74
+sha: $SHA$
 
 """
 
@@ -29,6 +29,11 @@ from urllib.request import urlopen
 from urllib.parse import urlencode
 
 
+DESCRIPTION = """
+release.py makes it easier to create deploy bugs and push tags to trigger
+deploys. For help, see: https://github.com/willkg/socorro-release/
+"""
+
 GITHUB_API = "https://api.github.com/"
 BZ_URL = "https://bugzilla.mozilla.org/enter_bug.cgi"
 
@@ -36,10 +41,11 @@ DEFAULT_CONFIG = {
     # Bugzilla product and component to write new bugs in
     "bugzilla_product": "",
     "bugzilla_component": "",
-
     # GitHub user and project name
     "github_user": "",
     "github_project": "",
+    # The name of the main branch
+    "main_branch": "",
 }
 
 LINE = "=" * 80
@@ -48,7 +54,7 @@ LINE = "=" * 80
 def get_config():
     """Generates configuration.
 
-    This tries to pull from the [tools:release] section of a setup.cfg in the
+    This tries to pull from the [tool:release] section of a setup.cfg in the
     working directory. If that doesn't exist, then it uses defaults.
 
     :returns: configuration dict
@@ -62,10 +68,10 @@ def get_config():
     config = configparser.ConfigParser()
     config.read("setup.cfg")
 
-    if "tools:release" not in config:
+    if "tool:release" not in config:
         return my_config
 
-    config = config["tools:release"]
+    config = config["tool:release"]
     for key in my_config.keys():
         my_config[key] = config.get(key, "")
 
@@ -86,8 +92,8 @@ def fetch(url, is_json=True):
     return data
 
 
-def fetch_history_from_github(owner, repo, from_rev):
-    url = f"{GITHUB_API}repos/{owner}/{repo}/compare/{from_rev}...master"
+def fetch_history_from_github(owner, repo, from_rev, main_branch):
+    url = f"{GITHUB_API}repos/{owner}/{repo}/compare/{from_rev}...{main_branch}"
     return fetch(url)
 
 
@@ -148,11 +154,7 @@ def make_tag(bug_number, remote_name, tag_name, commits_since_tag):
 
 
 def make_bug(
-    github_project,
-    tag_name,
-    commits_since_tag,
-    bugzilla_product,
-    bugzilla_component,
+    github_project, tag_name, commits_since_tag, bugzilla_product, bugzilla_component
 ):
     """Creates a bug."""
     summary = f"{github_project} deploy: {tag_name}"
@@ -194,13 +196,10 @@ def make_bug(
 def run():
     config = get_config()
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
     for key, val in config.items():
         key = key.replace("_", "-")
-        parser.add_argument(
-            f"--{key}",
-            default=val,
-        )
+        parser.add_argument(f"--{key}", default=val)
 
     subparsers = parser.add_subparsers(dest="cmd")
     subparsers.required = True
@@ -216,10 +215,21 @@ def run():
 
     args = parser.parse_args()
 
-    # Let's make sure we're up-to-date and on master branch
+    github_project = args.github_project
+    github_user = args.github_user
+    main_branch = args.main_branch
+
+    if not github_project or not github_user or not main_branch:
+        print("main_branch, github_project, and github_user are required.")
+        print("Either set them in setup.cfg or specify them as command line arguments.")
+        return 1
+
+    # Let's make sure we're up-to-date and on main branch
     current_branch = check_output("git rev-parse --abbrev-ref HEAD")
-    if current_branch != "master":
-        print(f"Must be on the master branch to do this (not {current_branch})")
+    if current_branch != main_branch:
+        print(
+            f"Must be on the {main_branch} branch to do this; currently on {current_branch}"
+        )
         return 1
 
     # The current branch can't be dirty
@@ -232,19 +242,10 @@ def run():
         )
         return 1
 
-    github_project = args.github_project
-    github_user = args.github_user
-
-    if not github_project or not github_user:
-        print(
-            "github_project and github_user are required. Either set them in "
-            "setup.cfg or specify them as command line arguments."
-        )
-        return 1
     remote_name = get_remote_name(github_user)
 
     # Get existing git tags from remote
-    check_output(f"git pull {remote_name} master --tags", stderr=subprocess.STDOUT)
+    check_output(f"git pull {remote_name} {main_branch} --tags", stderr=subprocess.STDOUT)
 
     # Figure out the most recent tag details
     last_tag = check_output(
@@ -258,7 +259,7 @@ def run():
         print(last_tag_message)
         print(LINE)
 
-        resp = fetch_history_from_github(github_user, github_project, last_tag)
+        resp = fetch_history_from_github(github_user, github_project, last_tag, main_branch)
         if resp["status"] != "ahead":
             print(f"Nothing to deploy! {resp['status']}")
             return
