@@ -13,7 +13,7 @@ both.
 This requires Python 3 to run.
 
 repo: https://github.com/willkg/socorro-release/
-sha: $SHA$
+sha: 926e826140d55515360205b28b4dd524997893a6
 
 """
 
@@ -129,7 +129,7 @@ def get_remote_name(github_user):
 
 def make_tag(bug_number, remote_name, tag_name, commits_since_tag):
     """Tags a release."""
-    message = "\n".join(commits_since_tag)
+    message = "Tagged %s\n\n%s" % (tag_name, "\n".join(commits_since_tag))
 
     if bug_number:
         # Add bug number to tag
@@ -245,7 +245,9 @@ def run():
     remote_name = get_remote_name(github_user)
 
     # Get existing git tags from remote
-    check_output(f"git pull {remote_name} {main_branch} --tags", stderr=subprocess.STDOUT)
+    check_output(
+        f"git pull {remote_name} {main_branch} --tags", stderr=subprocess.STDOUT
+    )
 
     # Figure out the most recent tag details
     last_tag = check_output(
@@ -259,7 +261,9 @@ def run():
         print(last_tag_message)
         print(LINE)
 
-        resp = fetch_history_from_github(github_user, github_project, last_tag, main_branch)
+        resp = fetch_history_from_github(
+            github_user, github_project, last_tag, main_branch
+        )
         if resp["status"] != "ahead":
             print(f"Nothing to deploy! {resp['status']}")
             return
