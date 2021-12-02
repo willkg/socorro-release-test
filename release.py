@@ -129,7 +129,7 @@ def get_remote_name(github_user):
 
 def make_tag(bug_number, remote_name, tag_name, commits_since_tag):
     """Tags a release."""
-    message = "Tagged %s\n\n%s" % (tag_name, "\n".join(commits_since_tag))
+    message = "\n".join(commits_since_tag)
 
     if bug_number:
         # Add bug number to tag
@@ -151,6 +151,15 @@ def make_tag(bug_number, remote_name, tag_name, commits_since_tag):
     input(f">>> Ready to push to remote {remote_name}? Ctrl-c to cancel")
     print(">>> Pushing...")
     subprocess.check_call(["git", "push", "--tags", remote_name, tag_name])
+
+    # Show tag for adding to bug comment
+    print(">>> Show tag... Copy and paste this into bug comment.")
+    print(">>> %<-----------------------------------------------")
+    output = check_output(f"git show {tag_name}")
+    # Truncate the output at "diff --git"
+    output = output[:output.find("diff --git")]
+    print(output)
+    print(">>> %<-----------------------------------------------")
 
 
 def make_bug(
