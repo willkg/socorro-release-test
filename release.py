@@ -13,7 +13,7 @@ both.
 This requires Python 3 to run.
 
 repo: https://github.com/willkg/socorro-release/
-sha: fc43f671dd170093a5d540248017cef9a992316a
+sha: 8b9aa68050e32b64efe272d69c152049506ae3df
 
 """
 
@@ -136,10 +136,7 @@ def make_tag(bug_number, remote_name, tag_name, commits_since_tag):
             + f"\n\nDeploy bug #{bug_number}"
         )
     else:
-        message = (
-            f"Tag {tag_name}\n\n"
-            + "\n".join(commits_since_tag)
-        )
+        message = f"Tag {tag_name}\n\n" + "\n".join(commits_since_tag)
 
     # Print out new tag information
     print(">>> New tag: %s" % tag_name)
@@ -218,6 +215,10 @@ def run():
     config = get_config()
 
     parser = argparse.ArgumentParser(description=DESCRIPTION)
+
+    # Add items that can be configured to argparse as configuration options.
+    # This makes it possible to specify or override configuration with command
+    # line arguments.
     for key, val in config.items():
         key = key.replace("_", "-")
         parser.add_argument(f"--{key}", default=val)
@@ -338,6 +339,12 @@ def run():
         )
 
     elif args.cmd == "make-tag":
+        if args.bugzilla_product and args.bugzilla_component and not args.bug:
+            print(
+                "Bugzilla product and component are specified, but you didn't "
+                + "specify a bug number with --with-bug."
+            )
+            return 1
         make_tag(args.bug, remote_name, tag_name, commits_since_tag)
 
     else:
