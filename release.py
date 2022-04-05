@@ -13,7 +13,7 @@ both.
 This requires Python 3 to run.
 
 repo: https://github.com/willkg/socorro-release/
-sha: 522573cab99d7d7de2106853f3283d30bf88aaa9
+sha: fc43f671dd170093a5d540248017cef9a992316a
 
 """
 
@@ -198,6 +198,7 @@ def make_bug(
 
     if bugzilla_product:
         bz_params = {
+            "priority": "P2",
             "bug_type": "task",
             "comment": description,
             "form_name": "enter_bug",
