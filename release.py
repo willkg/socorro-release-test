@@ -13,7 +13,7 @@ both.
 This requires Python 3 to run.
 
 repo: https://github.com/willkg/socorro-release/
-sha: $SHA$
+sha: 522573cab99d7d7de2106853f3283d30bf88aaa9
 
 """
 
@@ -129,11 +129,17 @@ def get_remote_name(github_user):
 
 def make_tag(bug_number, remote_name, tag_name, commits_since_tag):
     """Tags a release."""
-    message = "\n".join(commits_since_tag)
-
     if bug_number:
-        # Add bug number to tag
-        message = message + f"\n\nDeploy bug #{bug_number}"
+        message = (
+            f"Tag {tag_name} (bug #{bug_number})\n\n"
+            + "\n".join(commits_since_tag)
+            + f"\n\nDeploy bug #{bug_number}"
+        )
+    else:
+        message = (
+            f"Tag {tag_name}\n\n"
+            + "\n".join(commits_since_tag)
+        )
 
     # Print out new tag information
     print(">>> New tag: %s" % tag_name)
@@ -158,7 +164,7 @@ def make_tag(bug_number, remote_name, tag_name, commits_since_tag):
         print(">>> %<-----------------------------------------------")
         output = check_output(f"git show {tag_name}")
         # Truncate the output at "diff --git"
-        output = output[:output.find("diff --git")].strip()
+        output = output[: output.find("diff --git")].strip()
         print(f"Tagged {tag_name}:")
         print("")
         print("```")
