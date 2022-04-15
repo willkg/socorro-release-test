@@ -8,3 +8,5 @@ Test repository for `socorro-release
 Line
 
 Another line
+
+More line
