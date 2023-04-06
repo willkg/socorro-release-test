@@ -2,7 +2,7 @@
 
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, you can obtain one at http://mozilla.org/MPL/2.0/.
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 """
 This script handles releases for this project.
@@ -13,7 +13,7 @@ both.
 This requires Python 3 to run.
 
 repo: https://github.com/willkg/socorro-release/
-sha: 8b9aa68050e32b64efe272d69c152049506ae3df
+sha: 84b134e774be47a021ea1f052c16abdf7e8a04d3
 
 """
 
@@ -47,6 +47,8 @@ DEFAULT_CONFIG = {
     "github_project": "",
     # The name of the main branch
     "main_branch": "",
+    # The tag structure using datetime formatting markers
+    "tag_name_template": "%Y.%m.%d",
 }
 
 LINE = "=" * 80
@@ -73,8 +75,8 @@ def get_config():
         return my_config
 
     config = config["tool:release"]
-    for key in my_config.keys():
-        my_config[key] = config.get(key, "")
+    for key, val in my_config.items():
+        my_config[key] = config.get(key, val)
 
     return my_config
 
@@ -226,6 +228,7 @@ def run():
     # This makes it possible to specify or override configuration with command
     # line arguments.
     for key, val in config.items():
+        print(f"adding {key!r} {val!r} arg")
         key = key.replace("_", "-")
         parser.add_argument(f"--{key}", default=val)
 
@@ -238,7 +241,9 @@ def run():
         "--with-bug", dest="bug", help="Bug for this deploy if any."
     )
     make_tag_parser.add_argument(
-        "--with-tag", dest="tag", help="Tag to use; defaults to figuring out the tag."
+        "--with-tag",
+        dest="tag",
+        help="Tag to use; defaults to figuring out the tag using tag_name_template."
     )
 
     args = parser.parse_args()
@@ -246,6 +251,7 @@ def run():
     github_project = args.github_project
     github_user = args.github_user
     main_branch = args.main_branch
+    tag_name_template = args.tag_name_template
 
     if not github_project or not github_user or not main_branch:
         print("main_branch, github_project, and github_user are required.")
@@ -327,13 +333,16 @@ def run():
     if args.cmd == "make-tag" and args.tag:
         tag_name = args.tag
     else:
-        tag_name = datetime.datetime.now().strftime("%Y.%m.%d")
+        print(tag_name_template)
+        tag_name = datetime.datetime.now().strftime(tag_name_template)
 
     # If it's already taken, append a -N
     existing_tags = check_output(f'git tag -l "{tag_name}*"').splitlines()
     if existing_tags:
-        index = len([x for x in existing_tags if x.startswith(tag_name)]) + 1
-        tag_name = f"{tag_name}-{index}"
+        index = 2
+        while tag_name in existing_tags:
+            index += 1
+            tag_name = f"{tag_name}-{index}"
 
     if args.cmd == "make-bug":
         make_bug(
