@@ -12,8 +12,10 @@ both.
 
 This requires Python 3 to run.
 
+If you're using Python <3.11, this also requires the tomli library.
+
 repo: https://github.com/willkg/socorro-release/
-sha: 84b134e774be47a021ea1f052c16abdf7e8a04d3
+sha: 93643ca1ec2953386844f778d182e7a2898600be
 
 """
 
@@ -57,26 +59,47 @@ LINE = "=" * 80
 def get_config():
     """Generates configuration.
 
-    This tries to pull from the [tool:release] section of a setup.cfg in the
-    working directory. If that doesn't exist, then it uses defaults.
+    This tries to pull from the [tool:release] section of a ``setup.cfg`` or
+    ``pyproject.toml`` file in the working directory. If that doesn't exist,
+    then it uses defaults.
 
     :returns: configuration dict
 
     """
     my_config = dict(DEFAULT_CONFIG)
 
-    if not os.path.exists("setup.cfg"):
-        return my_config
+    if os.path.exists("pyproject.toml"):
+        if sys.version_info >= (3, 11):
+            import tomllib
+        else:
+            try:
+                import tomli as tomllib
+            except ImportError:
+                print(
+                    "For Python <3.11, you need to install tomli to work with pyproject.toml "
+                    + "files."
+                )
+                tomllib = None
 
-    config = configparser.ConfigParser()
-    config.read("setup.cfg")
+        if tomllib is not None:
+            with open("pyproject.toml", "rb") as fp:
+                data = tomllib.load(fp)
 
-    if "tool:release" not in config:
-        return my_config
+            config_data = data.get("tool", {}).get("release", {})
+            if config_data:
+                for key, default_val in my_config.items():
+                    my_config[key] = config_data.get(key, default_val)
 
-    config = config["tool:release"]
-    for key, val in my_config.items():
-        my_config[key] = config.get(key, val)
+    if os.path.exists("setup.cfg"):
+        config = configparser.ConfigParser()
+        config.read("setup.cfg")
+
+        if "tool:release" in config:
+            config = config["tool:release"]
+            for key, default_val in my_config.items():
+                my_config[key] = config.get(key, default_val)
+
+            return my_config
 
     return my_config
 
@@ -242,7 +265,7 @@ def run():
     make_tag_parser.add_argument(
         "--with-tag",
         dest="tag",
-        help="Tag to use; defaults to figuring out the tag using tag_name_template."
+        help="Tag to use; defaults to figuring out the tag using tag_name_template.",
     )
 
     args = parser.parse_args()
@@ -254,7 +277,10 @@ def run():
 
     if not github_project or not github_user or not main_branch:
         print("main_branch, github_project, and github_user are required.")
-        print("Either set them in setup.cfg or specify them as command line arguments.")
+        print(
+            "Either set them in pyproject.toml/setup.cfg or specify them as command "
+            + "line arguments."
+        )
         return 1
 
     # Let's make sure we're up-to-date and on main branch
@@ -332,16 +358,16 @@ def run():
     if args.cmd == "make-tag" and args.tag:
         tag_name = args.tag
     else:
-        print(tag_name_template)
         tag_name = datetime.datetime.now().strftime(tag_name_template)
 
-    # If it's already taken, append a -N
+    # If there's already a tag, then increment the -N until we find a tag name
+    # that doesn't exist, yet
     existing_tags = check_output(f'git tag -l "{tag_name}*"').splitlines()
     if existing_tags:
         index = 2
-        while tag_name in existing_tags:
-            tag_name = f"{tag_name}-{index}"
+        while tag_name not in existing_tags:
             index += 1
+            tag_name = f"{tag_name}-{index}"
 
     if args.cmd == "make-bug":
         make_bug(
