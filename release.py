@@ -362,14 +362,11 @@ def run():
 
     # If there's already a tag, then increment the -N until we find a tag name
     # that doesn't exist, yet
-    print(f"{tag_name = }")
     existing_tags = check_output(f'git tag -l "{tag_name}*"').splitlines()
-    print(f"{existing_tags = }")
     if existing_tags:
         tag_name_attempt = tag_name
         index = 2
         while tag_name_attempt in existing_tags:
-            print(f"{tag_name_attempt = }")
             tag_name_attempt = f"{tag_name}-{index}"
             index += 1
         tag_name = tag_name_attempt

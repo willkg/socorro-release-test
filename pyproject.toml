@@ -5,4 +5,4 @@ github_project = "socorro-release-test"
 # bugzilla_product = Socorro
 # bugzilla_component = Infra
 main_branch = "main"
-tag_name_template = "v%Y.%m.%d"
+# tag_name_template = "v%Y.%m.%d"
