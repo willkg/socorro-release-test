@@ -228,7 +228,6 @@ def run():
     # This makes it possible to specify or override configuration with command
     # line arguments.
     for key, val in config.items():
-        print(f"adding {key!r} {val!r} arg")
         key = key.replace("_", "-")
         parser.add_argument(f"--{key}", default=val)
 
@@ -341,8 +340,8 @@ def run():
     if existing_tags:
         index = 2
         while tag_name in existing_tags:
-            index += 1
             tag_name = f"{tag_name}-{index}"
+            index += 1
 
     if args.cmd == "make-bug":
         make_bug(
