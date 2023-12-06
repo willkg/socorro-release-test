@@ -1,8 +1,15 @@
 [tool.release]
-
 github_user = "willkg"
 github_project = "socorro-release-test"
 # bugzilla_product = Socorro
 # bugzilla_component = Infra
 main_branch = "main"
 # tag_name_template = "v%Y.%m.%d"
+
+
+[tool.service-status]
+main_branch = "main"
+hosts = [
+    "stage=https://crash-stats.allizom.org",
+    "prod=https://crash-stats.mozilla.org",
+]
