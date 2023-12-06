@@ -12,10 +12,13 @@ both.
 
 This requires Python 3 to run.
 
-If you're using Python <3.11, this also requires the tomli library.
+If you want to use ``pyproject.toml`` and you're using Python <3.11, this also
+requires the tomli library.
+
+See https://github.com/willkg/socorro-release/#readme for details.
 
 repo: https://github.com/willkg/socorro-release/
-sha: 93643ca1ec2953386844f778d182e7a2898600be
+sha: e7d352303f9f1c9ba3e863b00649b05383bcb32c
 
 """
 
@@ -24,6 +27,7 @@ import configparser
 import datetime
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -33,7 +37,9 @@ from urllib.parse import urlencode
 
 DESCRIPTION = """
 release.py makes it easier to create deploy bugs and push tags to trigger
-deploys. For help, see: https://github.com/willkg/socorro-release/
+deploys.
+
+For help, see: https://github.com/willkg/socorro-release/
 """
 
 GITHUB_API = "https://api.github.com/"
@@ -59,9 +65,12 @@ LINE = "=" * 80
 def get_config():
     """Generates configuration.
 
-    This tries to pull from the [tool:release] section of a ``setup.cfg`` or
-    ``pyproject.toml`` file in the working directory. If that doesn't exist,
-    then it uses defaults.
+    This tries to pull configuration from:
+
+    1. the ``[tool.release]`` table from a ``pyproject.toml`` file, OR
+    2. the ``[tool:release]`` section of a ``setup.cfg`` file
+
+    If neither exist, then it uses defaults.
 
     :returns: configuration dict
 
@@ -89,6 +98,7 @@ def get_config():
             if config_data:
                 for key, default_val in my_config.items():
                     my_config[key] = config_data.get(key, default_val)
+                return my_config
 
     if os.path.exists("setup.cfg"):
         config = configparser.ConfigParser()
@@ -251,8 +261,13 @@ def run():
     # This makes it possible to specify or override configuration with command
     # line arguments.
     for key, val in config.items():
-        key = key.replace("_", "-")
-        parser.add_argument(f"--{key}", default=val)
+        key_arg = key.replace("_", "-")
+        default_val = val.replace("%", "%%")
+        parser.add_argument(
+            f"--{key_arg}",
+            default=val,
+            help=f"override configuration {key}; defaults to {default_val!r}",
+        )
 
     subparsers = parser.add_subparsers(dest="cmd")
     subparsers.required = True
@@ -309,10 +324,9 @@ def run():
     )
 
     # Figure out the most recent tag details
-    last_tag = check_output(
-        "git for-each-ref --sort=-taggerdate --count=1 --format %(tag) refs/tags"
-    )
-    if last_tag:
+    all_tags = check_output("git tag --list --sort=-creatordate").splitlines()
+    if all_tags:
+        last_tag = all_tags[0]
         last_tag_message = check_output(f'git tag -l --format="%(contents)" {last_tag}')
         print(f">>> Last tag was: {last_tag}")
         print(">>> Message:")
@@ -331,6 +345,7 @@ def run():
         resp = fetch_history_from_github(github_user, github_project, first_commit)
 
     commits_since_tag = []
+    bug_name_prefix_regexp = re.compile(re.escape("bug-[\d]+"), re.IGNORECASE)
     for commit in resp["commits"]:
         # Skip merge commits
         if len(commit["parents"]) > 1:
@@ -344,6 +359,9 @@ def run():
         summary = commit["commit"]["message"]
         summary = summary.splitlines()[0]
         summary = summary[:80]
+        # Bug 1868455: While GitHub autolinking doesn't suport spaces, Bugzilla autolinking
+        # doesn't support hyphens.
+        summary = bug_name_prefix_regexp.sub("bug ", summary)
 
         # Figure out who did the commit prefering GitHub usernames
         who = commit["author"]

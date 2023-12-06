@@ -1,8 +1,8 @@
 [tool.release]
 github_user = "willkg"
 github_project = "socorro-release-test"
-# bugzilla_product = Socorro
-# bugzilla_component = Infra
+bugzilla_product = "Socorro"
+bugzilla_component = "Infra"
 main_branch = "main"
 # tag_name_template = "v%Y.%m.%d"
 
