@@ -18,7 +18,7 @@ requires the tomli library.
 See https://github.com/willkg/socorro-release/#readme for details.
 
 repo: https://github.com/willkg/socorro-release/
-sha: e7d352303f9f1c9ba3e863b00649b05383bcb32c
+sha: 4060f986f86357e1c282cc1e20616807865c54c6
 
 """
 
@@ -345,7 +345,7 @@ def run():
         resp = fetch_history_from_github(github_user, github_project, first_commit)
 
     commits_since_tag = []
-    bug_name_prefix_regexp = re.compile(re.escape("bug-[\d]+"), re.IGNORECASE)
+    bug_name_prefix_regexp = re.compile("bug ([\d]+)", re.IGNORECASE)
     for commit in resp["commits"]:
         # Skip merge commits
         if len(commit["parents"]) > 1:
@@ -361,7 +361,7 @@ def run():
         summary = summary[:80]
         # Bug 1868455: While GitHub autolinking doesn't suport spaces, Bugzilla autolinking
         # doesn't support hyphens.
-        summary = bug_name_prefix_regexp.sub("bug ", summary)
+        summary = bug_name_prefix_regexp.sub(r"bug-\1", summary)
 
         # Figure out who did the commit prefering GitHub usernames
         who = commit["author"]
