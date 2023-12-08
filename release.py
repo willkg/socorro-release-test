@@ -18,7 +18,7 @@ requires the tomli library.
 See https://github.com/willkg/socorro-release/#readme for details.
 
 repo: https://github.com/willkg/socorro-release/
-sha: 5f9d42d8bd56a2861d8f9d1234e5497a4869449c
+sha: b5548e53da340b115ed2b26345d41b04a5437718
 
 """
 
@@ -155,9 +155,15 @@ def get_remote_name(github_user):
     # Figure out remote to push tag to
     remote_output = check_output("git remote -v")
 
+    def check_ssh(github_user, remote_url):
+        return f":{github_user}/" in remote_url
+
+    def check_https(github_user, remote_url):
+        return f"/{github_user}/" in remote_url
+
     for line in remote_output.splitlines():
         line = line.split("\t")
-        if f":{github_user}/" in line[1]:
+        if check_ssh(github_user, line[1]) or check_https(github_user, line[1]):
             return line[0]
 
     raise Exception(f"Can't figure out remote name for {github_user}.")
