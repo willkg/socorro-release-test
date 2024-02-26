@@ -176,7 +176,7 @@ def get_remote_name(github_user):
 
 
 def make_tag(
-    bug_number, github_project, github_user, remote_name, tag_name, commits_since_tag
+    bug_number, github_project, github_user, remote_name, tag_name, commits_since_tag, bugs_referenced,
 ):
     """Tags a release."""
     if bug_number:
@@ -226,7 +226,7 @@ def make_tag(
 
 
 def make_bug(
-    github_project, tag_name, commits_since_tag, bugzilla_product, bugzilla_component
+    github_project, tag_name, commits_since_tag, bugs_referenced, bugzilla_product, bugzilla_component
 ):
     """Creates a bug."""
     summary = f"{github_project} deploy: {tag_name}"
@@ -242,6 +242,11 @@ def make_bug(
         "",
     ]
     description.extend(commits_since_tag)
+    if bugs_referenced:
+        description.append("")
+        description.append("Bugs referenced:")
+        for bug in sorted(bugs_referenced):
+            description.append(f"{bug}\n")
     description = "\n".join(description)
 
     print(">>> Description")
@@ -382,7 +387,7 @@ def run():
 
         bug_match = BUG_RE.match(summary)
         if bug_match is not None:
-            bugs_referenced.add(bug_match.groups(1))
+            bugs_referenced.add(bug_match.groups(1)[0])
 
         # Figure out who did the commit prefering GitHub usernames
         who = commit["author"]
@@ -392,8 +397,6 @@ def run():
             who = who.get("login", "?")
 
         commits_since_tag.append("`%s`: %s (%s)" % (sha, summary, who))
-
-    print(bugs_referenced)
 
     # Use specified tag or figure out next tag name as YYYY.MM.DD format
     if args.cmd == "make-tag" and args.tag:
@@ -417,6 +420,7 @@ def run():
             github_project,
             tag_name,
             commits_since_tag,
+            bugs_referenced,
             args.bugzilla_product,
             args.bugzilla_component,
         )
@@ -435,6 +439,7 @@ def run():
             remote_name,
             tag_name,
             commits_since_tag,
+            bugs_referenced,
         )
 
     else:
