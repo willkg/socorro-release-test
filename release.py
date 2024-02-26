@@ -169,7 +169,9 @@ def get_remote_name(github_user):
     raise Exception(f"Can't figure out remote name for {github_user}.")
 
 
-def make_tag(bug_number, github_project, github_user, remote_name, tag_name, commits_since_tag):
+def make_tag(
+    bug_number, github_project, github_user, remote_name, tag_name, commits_since_tag
+):
     """Tags a release."""
     if bug_number:
         resp = fetch(BZ_BUG_JSON_URL + bug_number, is_json=True)
@@ -186,6 +188,7 @@ def make_tag(bug_number, github_project, github_user, remote_name, tag_name, com
         message = f"Tag {tag_name}\n\n" + "\n".join(commits_since_tag)
 
     # Print out new tag information
+    print("")
     print(">>> New tag: %s" % tag_name)
     print(">>> Tag message:")
     print(LINE)
@@ -194,19 +197,24 @@ def make_tag(bug_number, github_project, github_user, remote_name, tag_name, com
 
     # Create tag
     input(f">>> Ready to tag {tag_name}? Ctrl-c to cancel")
+    print("")
     print(">>> Creating tag...")
     subprocess.check_call(["git", "tag", "-s", tag_name, "-m", message])
 
     # Push tag
     input(f">>> Ready to push to remote {remote_name}? Ctrl-c to cancel")
+    print("")
     print(">>> Pushing...")
     subprocess.check_call(["git", "push", "--tags", remote_name, tag_name])
 
     if bug_number:
         # Show url to tag information on GitHub for bug comment
-        print(f">>> Show tag... Copy and paste this into bug #{bug_number}.")
+        tag_url = (
+            f"https://github.com/{github_user}/{github_project}/releases/tag/{tag_name}"
+        )
+        print("")
+        print(f">>> Copy and paste this tag url into bug #{bug_number}.")
         print(">>> %<-----------------------------------------------")
-        tag_url = f"https://github.com/{github_user}/{github_project}/releases/tag/{tag_name}"
         print(f"{tag_url}")
         print(">>> %<-----------------------------------------------")
 
@@ -406,7 +414,14 @@ def run():
                 + "specify a bug number with --with-bug."
             )
             return 1
-        make_tag(args.bug, github_project, github_user, remote_name, tag_name, commits_since_tag)
+        make_tag(
+            args.bug,
+            github_project,
+            github_user,
+            remote_name,
+            tag_name,
+            commits_since_tag,
+        )
 
     else:
         parser.print_help()
