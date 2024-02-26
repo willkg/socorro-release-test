@@ -382,7 +382,7 @@ def run():
 
         bug_match = BUG_RE.match(summary)
         if bug_match is not None:
-            bugs_referenced.add(bug_match.groups[1])
+            bugs_referenced.add(bug_match.groups(1))
 
         # Figure out who did the commit prefering GitHub usernames
         who = commit["author"]
