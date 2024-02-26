@@ -18,7 +18,7 @@ requires the tomli library.
 See https://github.com/willkg/socorro-release/#readme for details.
 
 repo: https://github.com/willkg/socorro-release/
-sha: b5548e53da340b115ed2b26345d41b04a5437718
+sha: $SHA$
 
 """
 
@@ -31,8 +31,8 @@ import re
 import shlex
 import subprocess
 import sys
-from urllib.request import urlopen
 from urllib.parse import urlencode
+from urllib.request import urlopen
 
 
 DESCRIPTION = """
@@ -169,7 +169,7 @@ def get_remote_name(github_user):
     raise Exception(f"Can't figure out remote name for {github_user}.")
 
 
-def make_tag(bug_number, remote_name, tag_name, commits_since_tag):
+def make_tag(bug_number, github_project, github_user, remote_name, tag_name, commits_since_tag):
     """Tags a release."""
     if bug_number:
         resp = fetch(BZ_BUG_JSON_URL + bug_number, is_json=True)
@@ -203,17 +203,11 @@ def make_tag(bug_number, remote_name, tag_name, commits_since_tag):
     subprocess.check_call(["git", "push", "--tags", remote_name, tag_name])
 
     if bug_number:
-        # Show tag for adding to bug comment
+        # Show url to tag information on GitHub for bug comment
         print(f">>> Show tag... Copy and paste this into bug #{bug_number}.")
         print(">>> %<-----------------------------------------------")
-        output = check_output(f"git show {tag_name}")
-        # Truncate the output at "diff --git"
-        output = output[: output.find("diff --git")].strip()
-        print(f"Tagged {tag_name}:")
-        print("")
-        print("```")
-        print(output)
-        print("```")
+        tag_url = f"https://github.com/{github_user}/{github_project}/releases/tag/{tag_name}"
+        print(f"{tag_url}")
         print(">>> %<-----------------------------------------------")
 
 
@@ -412,7 +406,7 @@ def run():
                 + "specify a bug number with --with-bug."
             )
             return 1
-        make_tag(args.bug, remote_name, tag_name, commits_since_tag)
+        make_tag(args.bug, github_project, github_user, remote_name, tag_name, commits_since_tag)
 
     else:
         parser.print_help()
