@@ -245,8 +245,9 @@ def make_bug(
     if bugs_referenced:
         description.append("")
         description.append("Bugs referenced:")
+        description.append("")
         for bug in sorted(bugs_referenced):
-            description.append(f"{bug}\n")
+            description.append(f"* bug #{bug}")
     description = "\n".join(description)
 
     print(">>> Description")
