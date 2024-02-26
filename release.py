@@ -61,6 +61,12 @@ DEFAULT_CONFIG = {
 
 LINE = "=" * 80
 
+# Recognize "bug-NNNNNNN" and "bug NNNNNNN"
+BUG_RE = re.compile(r"bug[ -]([\d]+)", re.IGNORECASE)
+
+# Recognize "bug-NNNNNNN"
+BUG_HYPHEN_PREFIX_RE = re.compile(r"bug-([\d]+)", re.IGNORECASE)
+
 
 def get_config():
     """Generates configuration.
@@ -352,8 +358,8 @@ def run():
         first_commit = check_output("git rev-list --max-parents=0 HEAD")
         resp = fetch_history_from_github(github_user, github_project, first_commit)
 
+    bugs_referenced = set()
     commits_since_tag = []
-    bug_name_prefix_regexp = re.compile(r"bug-([\d]+)", re.IGNORECASE)
     for commit in resp["commits"]:
         # Skip merge commits
         if len(commit["parents"]) > 1:
@@ -367,10 +373,16 @@ def run():
         summary = commit["commit"]["message"]
         summary = summary.splitlines()[0]
         summary = summary[:80]
-        # Bug 1868455: While GitHub autolinking doesn't suport spaces, Bugzilla autolinking
-        # doesn't support hyphens.
+
+        # Bug 1868455: While GitHub autolinking doesn't suport spaces, Bugzilla
+        # autolinking doesn't support hyphens. When creating a bug, we want to
+        # use "bug NNNNNNN" form so Bugzilla autolinking works.
         if args.cmd == "make-bug":
-            summary = bug_name_prefix_regexp.sub(r"bug \1", summary)
+            summary = BUG_HYPHEN_PREFIX_RE.sub(r"bug \1", summary)
+
+        bug_match = BUG_RE.match(summary)
+        if bug_match is not None:
+            bugs_referenced.add(bug_match.groups[1])
 
         # Figure out who did the commit prefering GitHub usernames
         who = commit["author"]
@@ -380,6 +392,8 @@ def run():
             who = who.get("login", "?")
 
         commits_since_tag.append("`%s`: %s (%s)" % (sha, summary, who))
+
+    print(bugs_referenced)
 
     # Use specified tag or figure out next tag name as YYYY.MM.DD format
     if args.cmd == "make-tag" and args.tag:
